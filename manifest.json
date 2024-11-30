@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "GPT Pearson HW Solver",
+  "description": "Automatically solves Pearson HW using ChatGPT",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "32": "logo.png"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "content_scripts": [
+    {
+      "js": ["script.js"],
+      "matches": ["https://*.pearson.com/*"],
+      "all_frames": true
+    }
+  ],
+  "host_permissions": ["https://mylab.pearson.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

@@ -1,0 +1,61 @@
+body {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  align-items: center;
+}
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+button {
+  height: 30px;
+  width: 90px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007dff;
+  font-size: 20px;
+  color: white;
+  margin-bottom: 20px;
+  transition: transform 0.1s ease-in;
+}
+button:hover {
+  transform: scale(1.2, 1.2);
+}
+button:active:hover {
+  background-color: white;
+  color: #007dff;
+  border: 1px solid #007dff;
+}
+.output {
+  margin-top: none;
+  height: 70px;
+  width: 140px;
+  border: black solid 1px;
+  border-radius: 2px;
+  text-align: center;
+  font-size: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.label {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+.spinner {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  animation: spin 1000ms;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0turn);
+  }
+  to {
+    transform: rotate(1turn);
+  }
+}
