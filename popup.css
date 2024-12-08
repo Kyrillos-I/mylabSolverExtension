@@ -27,6 +27,15 @@ button:active:hover {
   color: #007dff;
   border: 1px solid #007dff;
 }
+button#solveAll:active:hover {
+  background-color: white;
+  color: #9d00ff;
+  border: 1px solid #9d00ff;
+}
+button#solveAll {
+  background-color: #9d00ff;
+  width: 100px;
+}
 .output {
   margin-top: none;
   min-height: 70px;
@@ -50,6 +59,24 @@ button:active:hover {
   animation: spin 1000ms;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+.fullResponse {
+  display: none;
+  align-self: center;
+  text-align: center;
+  font-size: 12px;
+  color: #007dff;
+  text-decoration: underline;
+  margin-top: 5px;
+}
+.gptResponse {
+  display: none;
+  align-self: center;
+  font-size: 20px;
+  min-height: 70px;
+  min-width: 140px;
+  border: #007dff solid 1px;
+  border-radius: 2px;
 }
 @keyframes spin {
   from {
