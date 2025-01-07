@@ -43,6 +43,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (removeElement) {
           removeElement.remove();
         }
+        var CLevent = new MouseEvent("click", {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        });
+        async function waitForClearButtonAndClick(button) {
+          if (button && !button.disabled) {
+            await button.click();
+            await button.dispatchEvent(CLevent);
+          } // Check every 100ms
+        }
+
+        // Call the function with your button selector
+        let clearButton = document.querySelector("button.btnClear");
+        await waitForClearButtonAndClick(clearButton);
 
         console.log("Question element found:", questionElement);
         questionText = questionElement.innerText.trim();
@@ -90,7 +105,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.log(spanLastPart);
               fillAnswerAndSubmit(answer, spanLastPart, parts);
 
-              function fillAnswerAndSubmit(answer, lastPart, parts) {
+              async function fillAnswerAndSubmit(answer, lastPart, parts) {
                 var inputFields = document.querySelectorAll("input.focusNode");
                 var spanHolders = document.querySelectorAll(
                   "span.eqDocument.current"
@@ -127,45 +142,62 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     let rightArrow = document.querySelector(
                       "button.iconRightArrowDir"
                     );
-
-                    for (let i = 0; i < parts.length; i++) {
-                      inputField.value += parts[i] + "\t";
-                      console.log(inputField.value);
-                      let inputEvent = new Event("input", { bubbles: true });
-                      inputField.dispatchEvent(inputEvent);
-                      var Cevent = new MouseEvent("click", {
-                        view: window,
+                    function wait500ms() {
+                      return new Promise((resolve) => {
+                        setTimeout(resolve, 500); // Waits for 500 milliseconds
+                      });
+                    }
+                    function simulateRightArrowKey(element) {
+                      const rightArrowDown = new KeyboardEvent("keydown", {
+                        key: "ArrowRight",
+                        code: "ArrowRight",
+                        keyCode: 39,
+                        which: 39,
                         bubbles: true,
                         cancelable: true,
                       });
-                      function waitForButtonAndClick(button) {
-                        const interval = setInterval(() => {
-                          if (button && !button.disabled) {
-                            button.removeAttribute("disabled");
-                            button.setAttribute("aria-disabled", "false");
-                            console.log(
-                              "Button is enabled. Clicking now:",
-                              button
-                            );
-                            button.click();
-                            button.dispatchEvent(Cevent);
-                            clearInterval(interval); // Stop polling after the button is clicked
-                          }
-                        }, 100); // Check every 100ms
-                      }
-                      inputField.focus();
-                      const pos = inputField.selectionStart;
-                      inputField.selectionStart = pos + 1;
-                      inputField.selectionEnd = pos + 1;
-                      eqEditor.focus();
-                      eqEditor.click();
-                      eqEditor.classList.add("focused");
-                      waitForButtonAndClick(inputField);
-                      waitForButtonAndClick(eqEditor);
-                      waitForButtonAndClick(moreButton);
-                      waitForButtonAndClick(rightArrow);
-                      inputField.dispatchEvent(inputEvent);
+
+                      const rightArrowUp = new KeyboardEvent("keyup", {
+                        key: "ArrowRight",
+                        code: "ArrowRight",
+                        keyCode: 39,
+                        which: 39,
+                        bubbles: true,
+                        cancelable: true,
+                      });
+
+                      element.dispatchEvent(rightArrowDown);
+                      element.dispatchEvent(rightArrowUp);
+                    }
+                    function replaceSqrtWithoutBackslash(str) {
+                      return str.replace(/(?<!\\)sqrt/g, "\\sqrt");
+                    }
+
+                    for (let i = 0; i < parts.length; i++) {
+                      let result = replaceSqrtWithoutBackslash(
+                        parts[i].replace(/[{}]/g, "")
+                      );
+                      inputField.value = result + "\t";
                       console.log(inputField.value);
+                      let inputEvent = new Event("input", { bubbles: true });
+                      inputField.dispatchEvent(inputEvent);
+                      inputField.click();
+                      inputField.focus();
+                      await wait500ms();
+                      inputField.click();
+                      inputField.focus();
+                      /*inputField.setSelectionRange(
+                        inputField.selectionStart + 1,
+                        inputField.selectionStart + 1
+                      );
+                      */
+                      simulateRightArrowKey(inputField);
+                      simulateRightArrowKey(inputField);
+                      simulateRightArrowKey(inputField);
+                      simulateRightArrowKey(inputField);
+                      simulateRightArrowKey(inputField);
+                      simulateRightArrowKey(inputField);
+                      await wait500ms();
                     }
                     // Step 3: Dispatch input event
                     var event = new Event("input", { bubbles: true });
@@ -198,16 +230,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   const targetElement = elements.find((el) =>
                     el.textContent.trim().startsWith(arr[i] + ".")
                   );
-                  console.log(targetElement);
-                  console.log(targetElement.htmlFor);
-                  let id = "" + targetElement.htmlFor;
-                  console.log(id);
-                  let select = document.getElementById(id);
-                  console.log(select);
-                  if (!select.checked) {
-                    select.click();
+                  if (targetElement) {
+                    console.log(targetElement);
+                    console.log(targetElement.htmlFor);
+                    let id = "" + targetElement.htmlFor;
+                    console.log(id);
+                    let select = document.getElementById(id);
+                    console.log(select);
+                    if (!select.checked) {
+                      select.click();
+                    }
+                    console.log(select);
                   }
-                  console.log(select);
                 }
 
                 // Step 4: Select the "Check Answer" button
@@ -292,7 +326,52 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
           const questionElement = await waitForElement("#contentHoldertop");
           //below is not an await as it may never be found
-          const removeElement = document.querySelector("span.tempAnswer");
+          // Step 4: Select the "Check Answer" button
+          let checkButton = document.querySelector(
+            "button.navButton.btn-primary"
+          );
+
+          // Ensure the button exists
+          if (!checkButton) {
+            console.warn(
+              "Check button not found. Attempting to navigate to the next question..."
+            );
+
+            // Find the currently selected LI element
+            const selectedLi = document.querySelector("li.selected");
+
+            if (!selectedLi) {
+              console.error("No selected question found. Ending execution.");
+              return; // Stop execution if no selected question exists
+            }
+
+            // Get the next list item (the one underneath the selected)
+            const nextLi = selectedLi.nextElementSibling;
+
+            if (nextLi) {
+              const link = nextLi.querySelector("a.questionLabel");
+
+              if (link) {
+                console.log("Navigating to the next question...");
+                link.click(); // Simulate a click on the next question
+              } else {
+                console.warn(
+                  "No link found in the next list item. Attempting to click the list item directly..."
+                );
+                nextLi.click();
+              }
+
+              // Allow time for the next question to load before continuing
+              setTimeout(() => {
+                solve1();
+              }, 500); // Adjust delay as needed for your application
+            } else {
+              console.error("No next question found. Ending execution.");
+              return; // Stop execution if there are no more questions
+            }
+            return;
+          }
+
           /*
         const firstInputFields = document.querySelectorAll("input.focusNode");
         const deleteInput = firstInputFields[firstInputFields.length - 1];
@@ -304,6 +383,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           inputField.dispatchEvent(new Event("change", { bubbles: true }));
         }
           */
+          let removeElement = document.querySelector("span.tempAnswer");
+          var CLevent = new MouseEvent("click", {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+          });
+          async function waitForClearButtonAndClick(button) {
+            if (button && !button.disabled) {
+              await button.click();
+              await button.dispatchEvent(CLevent);
+            } // Check every 100ms
+          }
+
+          // Call the function with your button selector
+          let clearButton = document.querySelector("button.btnClear");
+          await waitForClearButtonAndClick(clearButton);
           if (removeElement) {
             removeElement.remove();
           }
@@ -396,51 +491,64 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         "button.iconRightArrowDir"
                       );
 
-                      for (let i = 0; i < parts.length; i++) {
-                        inputField.value = parts[i] + "\t";
-                        console.log(inputField.value);
-                        let inputEvent = new Event("input", { bubbles: true });
-                        inputField.dispatchEvent(inputEvent);
-                        var Cevent = new MouseEvent("click", {
-                          view: window,
+                      function wait500ms() {
+                        return new Promise((resolve) => {
+                          setTimeout(resolve, 500); // Waits for 500 milliseconds
+                        });
+                      }
+                      function simulateRightArrowKey(element) {
+                        const rightArrowDown = new KeyboardEvent("keydown", {
+                          key: "ArrowRight",
+                          code: "ArrowRight",
+                          keyCode: 39,
+                          which: 39,
                           bubbles: true,
                           cancelable: true,
                         });
-                        function wait500ms() {
-                          return new Promise((resolve) => {
-                            setTimeout(resolve, 500); // Waits for 500 milliseconds
-                          });
-                        }
-                        async function waitForButtonAndClick(button) {
-                          await wait500ms();
-                          const interval = setInterval(() => {
-                            if (button && !button.disabled) {
-                              button.removeAttribute("disabled");
-                              console.log(
-                                "Button is enabled. Clicking now:",
-                                button
-                              );
-                              button.click();
-                              button.dispatchEvent(Cevent);
-                              clearInterval(interval); // Stop polling after the button is clicked
-                            }
-                          }, 100); // Check every 100ms
-                        }
-                        inputField.focus();
-                        const pos = inputField.selectionStart;
-                        inputField.selectionStart = pos + 1;
-                        inputField.selectionEnd = pos + 1;
-                        eqEditor.focus();
-                        eqEditor.click();
-                        eqEditor.classList.add("focused");
-                        await waitForButtonAndClick(inputField);
-                        await waitForButtonAndClick(eqEditor);
-                        await waitForButtonAndClick(moreButton);
-                        await waitForButtonAndClick(rightArrow);
-                        inputField.dispatchEvent(inputEvent);
+
+                        const rightArrowUp = new KeyboardEvent("keyup", {
+                          key: "ArrowRight",
+                          code: "ArrowRight",
+                          keyCode: 39,
+                          which: 39,
+                          bubbles: true,
+                          cancelable: true,
+                        });
+
+                        element.dispatchEvent(rightArrowDown);
+                        element.dispatchEvent(rightArrowUp);
+                      }
+                      function replaceSqrtWithoutBackslash(str) {
+                        return str.replace(/(?<!\\)sqrt/g, "\\sqrt");
+                      }
+
+                      for (let i = 0; i < parts.length; i++) {
+                        let result = replaceSqrtWithoutBackslash(
+                          parts[i].replace(/[{}]/g, "")
+                        );
+                        inputField.value = result + "\t";
                         console.log(inputField.value);
+                        let inputEvent = new Event("input", {
+                          bubbles: true,
+                        });
+                        inputField.dispatchEvent(inputEvent);
+                        inputField.click();
                         inputField.focus();
-                        inputField.setSelectionRange(99999, 99999);
+                        await wait500ms();
+                        inputField.click();
+                        inputField.focus();
+                        /*inputField.setSelectionRange(
+                          inputField.selectionStart + 1,
+                          inputField.selectionStart + 1
+                        );
+                        */
+                        simulateRightArrowKey(inputField);
+                        simulateRightArrowKey(inputField);
+                        simulateRightArrowKey(inputField);
+                        simulateRightArrowKey(inputField);
+                        simulateRightArrowKey(inputField);
+                        simulateRightArrowKey(inputField);
+                        await wait500ms();
                       }
                       // Step 3: Dispatch input event
                       var event = new Event("input", { bubbles: true });
@@ -476,101 +584,75 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     console.log(targetElement);
                     if (targetElement) {
                       var id = "" + targetElement.htmlFor;
-                    }
-                    console.log(id);
-                    let select = document.getElementById(id);
-                    console.log(select);
-                    if (select) {
-                      if (!select.checked) {
-                        select.click();
+                      console.log(id);
+                      let select = document.getElementById(id);
+                      console.log(select);
+                      if (select) {
+                        if (!select.checked) {
+                          select.click();
+                        }
                       }
+                      console.log(select);
                     }
-                    console.log(select);
                   }
 
-                  // Step 4: Select the "Check Answer" button
-                  let checkButton = document.querySelector(
-                    "button.navButton.btn-primary"
-                  );
+                  // Step 5: Click the button
+                  var event = new MouseEvent("click", {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true,
+                  });
+                  function waitForButtonAndClick(button) {
+                    const interval = setInterval(() => {
+                      if (button && !button.disabled) {
+                        console.log("Button is enabled. Clicking now:", button);
+                        button.click();
+                        button.dispatchEvent(event);
+                        clearInterval(interval); // Stop polling after the button is clicked
+                      }
+                    }, 100); // Check every 100ms
+                  }
 
-                  // Ensure the button exists
-                  if (checkButton) {
-                    // Step 5: Click the button
-                    var event = new MouseEvent("click", {
-                      view: window,
-                      bubbles: true,
-                      cancelable: true,
+                  // Call the function with your button selector
+                  waitForButtonAndClick(checkButton);
+
+                  function wait500ms() {
+                    return new Promise((resolve) => {
+                      setTimeout(resolve, 500); // Waits for 500 milliseconds
                     });
-                    function waitForButtonAndClick(button) {
-                      const interval = setInterval(() => {
-                        if (button && !button.disabled) {
-                          console.log(
-                            "Button is enabled. Clicking now:",
-                            button
-                          );
-                          button.click();
-                          button.dispatchEvent(event);
-                          clearInterval(interval); // Stop polling after the button is clicked
-                        }
-                      }, 100); // Check every 100ms
-                    }
-
-                    // Call the function with your button selector
-                    waitForButtonAndClick(checkButton);
-
-                    function wait500ms() {
-                      return new Promise((resolve) => {
-                        setTimeout(resolve, 500); // Waits for 500 milliseconds
-                      });
-                    }
+                  }
+                  await wait500ms();
+                  let okButton = document.querySelector(
+                    '[data-dojo-attach-point="btnOk"]'
+                  );
+                  while (!okButton) {
                     await wait500ms();
-                    let okButton = document.querySelector(
+                    okButton = document.querySelector(
                       '[data-dojo-attach-point="btnOk"]'
                     );
-                    while (!okButton) {
-                      await wait500ms();
-                      okButton = document.querySelector(
-                        '[data-dojo-attach-point="btnOk"]'
-                      );
-                    }
-                    if (okButton) {
-                      let title =
-                        document.querySelector("span.titleText").innerText;
-                      if (title == "That's incorrect") {
-                        let description =
-                          document.querySelector("span.rvText").innerText;
-                        solve1(
-                          description +
-                            " This is the incorrect answer: " +
-                            parts.join(" ")
-                        );
-                      }
+                  }
+                  if (okButton) {
+                    let title = await document.querySelector("span.titleText")
+                      .innerText;
+                    if (title == "That's incorrect." || title == "Try again.") {
+                      console.log("Incorrect if statement ran succesfully.");
+                      let description =
+                        document.querySelector("div.messageBox").innerText;
                       await wait500ms();
                       waitForButtonAndClick(okButton);
                       await wait500ms();
-                      solve1();
+                      solve1(
+                        description +
+                          " This is the incorrect answer: " +
+                          parts.join(" ")
+                      );
+                      return;
                     }
-                  } else {
-                    // Find the currently selected LI element
-                    const selectedLi = document.querySelector("li.selected");
-
-                    // Get the next list item (the one underneath the selected)
-                    const nextLi = selectedLi.nextElementSibling;
-
-                    if (nextLi) {
-                      // There might be an <a> inside the <li> you actually want to click
-                      const link = nextLi.querySelector("a.questionLabel");
-
-                      // If the link exists, simulate a click on it
-                      if (link) {
-                        link.click();
-                        nextLi.click();
-                      } else {
-                        // If there's no link, you can directly click the LI if it has a click handler
-                        nextLi.click();
-                      }
-                      solve1();
-                    }
+                    await wait500ms();
+                    waitForButtonAndClick(okButton);
+                    await wait500ms();
+                    solve1();
+                    return;
                   }
                 }
 

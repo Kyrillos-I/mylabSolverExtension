@@ -10,7 +10,7 @@ h1 {
 }
 button {
   height: 30px;
-  width: 90px;
+  width: 110px;
   border-radius: 5px;
   border: none;
   background-color: #007dff;
@@ -34,7 +34,7 @@ button#solveAll:active:hover {
 }
 button#solveAll {
   background-color: #9d00ff;
-  width: 100px;
+  width: 110px;
 }
 .output {
   margin-top: none;
