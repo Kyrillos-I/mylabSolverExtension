@@ -86,3 +86,66 @@ button#solveAll {
     transform: rotate(1turn);
   }
 }
+
+.popup-overlay {
+  position: fixed; /* so it covers entire screen */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.popup-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 300px;
+  width: 100%;
+}
+
+.log-in {
+  margin-top: 30px;
+  background-color: darkorange;
+  height: 20px;
+  width: 80px;
+  font-size: 15px;
+}
+
+.log-out {
+  margin-top: 30px;
+  background-color: red;
+  height: 20px;
+  width: 80px;
+  font-size: 15px;
+}
+
+.submit {
+  margin-top: 30px;
+}
+
+.sign-up-button {
+  background-color: rgb(69, 221, 69);
+  height: 20px;
+  width: 80px;
+  font-size: 15px;
+  color: white;
+  text-decoration: none;
+}
+button#solveSelected {
+  height: 30px;
+  width: 150px;
+  background-color: rgb(197, 197, 26);
+}
+.sign-up-btn-link {
+  text-decoration: none;
+  color: white;
+}
+button#solveSelected:active:hover {
+  background-color: white;
+  color: rgb(197, 197, 26);
+  border: 1px solid rgb(197, 197, 26);
+}

@@ -1,15 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "GPT Pearson HW Solver",
-  "description": "Automatically solves Pearson HW using ChatGPT",
+  "name": "MyLab Solver",
+  "description": "Automatically solves Pearson MyLab HW using AI.",
   "version": "1.0",
   "action": {
     "default_popup": "popup.html"
   },
   "icons": {
-    "32": "logo.png"
+    "128": "128NewLogo.png"
   },
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "storage"],
   "content_scripts": [
     {
       "js": ["script.js"],
