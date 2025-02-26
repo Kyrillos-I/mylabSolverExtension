@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (question == "" && answerPart == "") {
       sendResponse({
         answer:
-          "Final Answer: Nothing was detected. Try highlighting before using the highlight button.",
+          "Final Answer: Nothing was detected. Try highlighting text with your mouse then using the solve highlight button.",
       });
       return;
     }
@@ -25,37 +25,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!token) {
         console.log("No token found, user might not be logged in");
       }
+      chrome.storage.local.get(["deepThinkEnabled"], async (result) => {
+        const deepThinkEnabled = result.deepThinkEnabled;
+        if (deepThinkEnabled) {
+          console.log("Deep Think is enabled");
+        } else {
+          console.log("Deep Think is disabled");
+        }
 
-      try {
-        // Call the Express backend
-        fetch(
-          "https://gptbackend-production-7f4a.up.railway.app/process-question",
-          {
+        try {
+          // Call the Express backend
+          fetch("https://www.mylabsolver.com/process-question", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ question, answerPart }),
-          }
-        )
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.answer) {
-              console.log("Received answer from backend:", data.answer);
-              sendResponse({ answer: data.answer });
-            } else {
-              console.error("No answer received from backend:", data);
-              sendResponse({ error: "No answer received from backend" });
-            }
+            body: JSON.stringify({ question, answerPart, deepThinkEnabled }),
           })
-          .catch((error) => {
-            console.error("Error calling backend:", error);
-            sendResponse({ error: "Error calling backend" });
-          });
-      } catch (error) {
-        console.error("Unexpected error:", error);
-      }
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.answer) {
+                console.log("Received answer from backend:", data.answer);
+                sendResponse({ answer: data.answer });
+              } else {
+                console.error("No answer received from backend:", data);
+                sendResponse({
+                  answer: "Final Answer: No answer received from backend",
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Error calling backend:", error);
+              sendResponse({ error: "Error calling backend" });
+            });
+        } catch (error) {
+          console.error("Unexpected error:", error);
+        }
+      });
     });
 
     // Return true to indicate we're sending a response asynchronously

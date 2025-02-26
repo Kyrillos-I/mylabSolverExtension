@@ -98,7 +98,12 @@ function updatePopupUI(data) {
 
   const full = document.querySelector(".gptResponse");
   full.innerText = data;
-
+  if (
+    data ==
+    "Final Answer: Nothing was detected. Try highlighting text with your mouse then using the solve highlight button."
+  ) {
+    solveAllSelected = false;
+  }
   fullLink.addEventListener("click", () => {
     if (full.style.display == "none") {
       full.style.display = "flex";
@@ -109,10 +114,17 @@ function updatePopupUI(data) {
 
   if (solveAllSelected == true) {
     const output = document.querySelector(".text");
-    output.innerText = "";
 
     const load = document.querySelector(".spinner");
-    load.style.display = "block";
+    function showSpinner() {
+      output.innerText = "";
+      load.style.display = "block";
+    }
+    if (data) {
+      setTimeout(showSpinner, 2000);
+    } else {
+      showSpinner();
+    }
 
     button.style.display = "none";
     solveAll.style.display = "none";
@@ -290,6 +302,7 @@ loginForm.addEventListener("submit", async (event) => {
         if (!res.ok) {
           // maybe handle 401 or 500
           const errorData = await res.json();
+          alert("Incorect username or password");
           throw new Error(errorData.message || "Request failed");
         }
         return res.json();
@@ -297,16 +310,45 @@ loginForm.addEventListener("submit", async (event) => {
       .then((data) => {
         chrome.storage.local.set({ token: data.token }, () => {
           console.log("Token stored in chrome.storage.local");
-
-          const successMessage = document.querySelector("#successMessage");
-          successMessage.textContent = "You are now logged in!";
-          successMessage.style.display = "block";
+          alert("You are now logged in!");
           window.location.reload();
         });
       })
       .catch(console.error);
   } catch (error) {
-    console.error(error);
+    const successMessage = document.querySelector("#successMessage");
+    successMessage.textContent = error;
+    successMessage.style.display = "block";
   }
   popupOverlay.style.display = "none";
 });
+
+// Deep Think button functionality
+/*
+document.getElementById("deepThink").addEventListener("click", function () {
+  this.classList.toggle("selected");
+
+  // Store the selection state
+  const isSelected = this.classList.contains("selected");
+  chrome.storage.local.set({ deepThinkEnabled: isSelected });
+
+  // Optional: Visual feedback
+  if (isSelected) {
+    this.innerText = "Deep Think 🧠";
+  } else {
+    this.innerText = "Deep Think";
+  }
+});
+
+// Check stored state on popup open
+document.addEventListener("DOMContentLoaded", function () {
+  const deepThinkButton = document.getElementById("deepThink");
+
+  chrome.storage.local.get(["deepThinkEnabled"], function (result) {
+    if (result.deepThinkEnabled) {
+      deepThinkButton.classList.add("selected");
+      deepThinkButton.innerText = "Deep Think 🧠";
+    }
+  });
+});
+*/

@@ -1,15 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "MyLab Solver",
+  "name": "Dev MyLab Solver",
   "description": "Automatically solves Pearson MyLab HW using AI.",
-  "version": "1.0",
+  "version": "1.0.3",
   "action": {
     "default_popup": "popup.html"
   },
   "icons": {
     "128": "128NewLogo.png"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "js": ["script.js"],

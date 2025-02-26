@@ -9,9 +9,22 @@
   </head>
   <body>
     <h1>Press A Button Below To Solve</h1>
-    <button id="solve">Solve One</button>
-    <button id="solveAll">Solve All</button>
-    <button id="solveSelected">Solve Highlight</button>
+    <button id="solve" data-tooltip="Solve the current question">
+      Solve One
+    </button>
+    <button id="solveAll" data-tooltip="Solve all questions sequentially">
+      Solve All
+    </button>
+    <button id="solveSelected" data-tooltip="Solve the mouse highlighted text">
+      Solve Highlight
+    </button>
+    <!--<button
+      id="deepThink"
+      class="deep-think"
+      data-tooltip="Use a smarter, but slower AI model"
+    >
+      Deep Think
+    </button>-->
     <h3 class="label">Answer:</h3>
     <div class="output">
       <img src="spinner.png" alt="loading spinner" class="spinner" />
@@ -19,8 +32,8 @@
     </div>
     <div class="fullResponse">See full answer</div>
     <div class="gptResponse"></div>
-    <button class="log-in">Log In</button>
-    <button class="sign-up-button">
+    <button class="log-in" data-tooltip="Log in to your account">Log In</button>
+    <button class="sign-up-button" data-tooltip="Create a new account">
       <a
         href="https://gptbackend-production-7f4a.up.railway.app/sign-up"
         target="_blank"
@@ -29,7 +42,9 @@
         >Sign Up</a
       >
     </button>
-    <button class="log-out">Log Out</button>
+    <button class="log-out" data-tooltip="Log out of your account">
+      Log Out
+    </button>
     <p id="successMessage" style="display: none"></p>
 
     <!-- A hidden overlay or container for the pop-up -->
@@ -43,12 +58,13 @@
           <label for="password">Password</label>
           <input type="password" id="password" required />
           <a
-            href="http://localhost:3000/sign-up"
+            href="https://www.mylabsolver.com/sign-up?"
             target="_blank"
             rel="noopener noreferrer"
             class="sign-up"
             >Don't have an account? Click Here to Sign Up!</a
           >
+          <p>To reset your username/password email support@mylabsolver.com</p>
 
           <button type="submit" class="submit">Submit</button>
           <button type="button" class="close-popup">Close</button>

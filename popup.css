@@ -1,7 +1,7 @@
 body {
   display: flex;
   flex-direction: column;
-  width: 200px;
+  width: 230px;
   align-items: center;
 }
 h1 {
@@ -64,7 +64,7 @@ button#solveAll {
   display: none;
   align-self: center;
   text-align: center;
-  font-size: 12px;
+  font-size: 20px;
   color: #007dff;
   text-decoration: underline;
   margin-top: 5px;
@@ -72,7 +72,7 @@ button#solveAll {
 .gptResponse {
   display: none;
   align-self: center;
-  font-size: 20px;
+  font-size: 25px;
   min-height: 70px;
   min-width: 140px;
   border: #007dff solid 1px;
@@ -138,7 +138,7 @@ button#solveAll {
 button#solveSelected {
   height: 30px;
   width: 150px;
-  background-color: rgb(197, 197, 26);
+  background-color: rgb(32, 178, 170);
 }
 .sign-up-btn-link {
   text-decoration: none;
@@ -146,6 +146,83 @@ button#solveSelected {
 }
 button#solveSelected:active:hover {
   background-color: white;
-  color: rgb(197, 197, 26);
-  border: 1px solid rgb(197, 197, 26);
+  color: rgb(0, 128, 128);
+  border: 1px solid rgb(0, 128, 128);
 }
+
+button#deepThink {
+  height: 30px;
+  width: 130px;
+  border-radius: 15px; /* Fully rounded sides (half of height) */
+  border: 2px solid #007dff;
+  background-color: transparent; /* Clear when unselected */
+  font-size: 16px;
+  color: #007dff;
+  margin-bottom: 20px;
+  transition: transform 0.1s ease-in, background-color 0.2s ease-in,
+    color 0.2s ease-in, border 0.2s ease-in;
+}
+
+button#deepThink:hover {
+  transform: scale(1.2, 1.2);
+}
+
+button#deepThink.selected {
+  color: white;
+  background-color: #007dff;
+  border: 2px solid white;
+}
+
+button#deepThink:active:hover {
+  background-color: #e6f2ff;
+}
+
+/* Basic tooltip styling */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%; /* Position above the button */
+  left: 50%; /* Center horizontally */
+  transform: translateX(-50%); /* Center horizontally precisely */
+  margin-bottom: 5px; /* Add some space between button and tooltip */
+  padding: 5px 8px;
+  background-color: #333;
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  z-index: 200; /* Increased z-index to ensure it's above other buttons */
+  pointer-events: none; /* This makes the tooltip "pass through" mouse events */
+}
+
+/* Show the tooltip on hover with a 1-second delay */
+[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 1s; /* 1 second delay */
+}
+
+/* Remove the arrow entirely */
+
+/* Optional: Add a small arrow at the bottom of tooltip */
+/*
+button#solve[data-tooltip]::before,
+button#solveAll[data-tooltip]::before,
+button#solveSelected[data-tooltip]::before,
+button#deepThink[data-tooltip]::before {
+  bottom: -25px;
+}
+
+button.log-in[data-tooltip]::before,
+button.sign-up-button[data-tooltip]::before,
+button.log-out[data-tooltip]::before {
+  bottom: 35px;
+}
+*/
