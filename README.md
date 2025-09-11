@@ -1,5 +1,5 @@
 # mylabSolverExtension
-A Chrome Extension that utilizes GPT 4o and Deepseek R1 to automatically solve, input, and submit Pearson MyLab hw.
+A Chrome Extension that utilizes GPT 5 and Deepseek R1 to automatically solve, input, and submit Pearson MyLab hw.
 
 
 Check it out at: [mylabsolver.com ](https://www.mylabsolver.com/)
