@@ -72,11 +72,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "updatePopup") {
     // Update the popup with the received data
     updatePopupUI(request.data);
+
+    // If we received a final answer, clear it from storage (unless in solve all mode)
+    chrome.storage.local.get(["solveAllSelected"], (result) => {
+      if (
+        request.data &&
+        request.data.includes("Final Answer:") &&
+        !result.solveAllSelected
+      ) {
+        chrome.storage.local.remove("lastResponse");
+        chrome.storage.local.set({ processingQuestion: false });
+      }
+    });
+  }
+
+  if (request.action === "solveComplete") {
+    // Set processing state to false when solving is complete
+    chrome.storage.local.set({ processingQuestion: false });
   }
 });
 
 function updatePopupUI(data) {
-  // Implement UI update logic here
+  // Check if data is undefined or null
+  if (!data) {
+    const output = document.querySelector(".text");
+    const load = document.querySelector(".spinner");
+    if (load) load.style.display = "none";
+    if (output) output.innerText = "Solving stopped";
+
+    // Show buttons and hide spinner
+    const button = document.querySelector("button#solve");
+    const solveAll = document.querySelector("#solveAll");
+    const solveSelected = document.querySelector("#solveSelected");
+    const deepThinkButton = document.querySelector("#deepThink");
+    const stopSolvingButton = document.querySelector("#stopSolving");
+
+    if (button) button.style.display = "block";
+    if (solveAll) solveAll.style.display = "block";
+    if (solveSelected) solveSelected.style.display = "block";
+    if (deepThinkButton) deepThinkButton.style.display = "block";
+    if (stopSolvingButton) stopSolvingButton.style.display = "none";
+
+    return;
+  }
+
+  // Existing code for when data is defined
   const output = document.querySelector(".text");
   const keyword = "Final Answer: ";
   const answer = data.substring(data.indexOf(keyword) + keyword.length);
@@ -86,12 +126,19 @@ function updatePopupUI(data) {
 
   output.innerText = answer;
 
-  const button = document.querySelector("button");
+  const button = document.querySelector("button#solve");
   const solveAll = document.querySelector("#solveAll");
   const solveSelected = document.querySelector("#solveSelected");
+  const deepThinkButton = document.querySelector("#deepThink");
+  const deepThinkStatus = document.querySelector(".deep-think-status");
+  const stopSolvingButton = document.querySelector("#stopSolving");
+
   button.style.display = "block";
   solveAll.style.display = "block";
   solveSelected.style.display = "block";
+  deepThinkButton.style.display = "block";
+  stopSolvingButton.style.display = "none";
+  deepThinkStatus.style.display = "none";
 
   const fullLink = document.querySelector(".fullResponse");
   fullLink.style.display = "block";
@@ -103,6 +150,8 @@ function updatePopupUI(data) {
     "Final Answer: Nothing was detected. Try highlighting text with your mouse then using the solve highlight button."
   ) {
     solveAllSelected = false;
+    // Update processing state in storage
+    chrome.storage.local.set({ processingQuestion: false });
   }
   fullLink.addEventListener("click", () => {
     if (full.style.display == "none") {
@@ -119,6 +168,9 @@ function updatePopupUI(data) {
     function showSpinner() {
       output.innerText = "";
       load.style.display = "block";
+
+      // Set processing state to true when showing spinner
+      chrome.storage.local.set({ processingQuestion: true });
     }
     if (data) {
       setTimeout(showSpinner, 2000);
@@ -129,22 +181,40 @@ function updatePopupUI(data) {
     button.style.display = "none";
     solveAll.style.display = "none";
     solveSelected.style.display = "none";
+    deepThinkButton.style.display = "none";
 
-    const fullLink = document.querySelector(".fullResponse");
-
-    const full = document.querySelector(".gptResponse");
-
-    fullLink.removeEventListener("click", () => {
-      full.style.display = "flex";
-    });
-    fullLink.style.display = "none";
-    full.style.display = "none";
+    // ADD THIS LINE to ensure stop solving button stays visible
+    stopSolvingButton.style.display = "block";
   }
 }
 
 const button = document.querySelector("button#solve");
 const solveAll = document.querySelector("button#solveAll");
 const solveSelected = document.querySelector("button#solveSelected");
+
+function updateButtonsVisibility(hide) {
+  const button = document.querySelector("button#solve");
+  const solveAll = document.querySelector("#solveAll");
+  const solveSelected = document.querySelector("#solveSelected");
+  const deepThinkButton = document.querySelector("#deepThink");
+  const deepThinkStatus = document.querySelector(".deep-think-status");
+  const stopSolvingButton = document.querySelector("#stopSolving");
+
+  button.style.display = hide ? "none" : "block";
+  solveAll.style.display = hide ? "none" : "block";
+  solveSelected.style.display = hide ? "none" : "block";
+  deepThinkButton.style.display = hide ? "none" : "block";
+
+  // Show stop solving button only when other buttons are hidden (i.e., during solving)
+  stopSolvingButton.style.display = hide ? "block" : "none";
+
+  if (deepThinkButton.classList.contains("selected")) {
+    deepThinkStatus.style.display = hide ? "block" : "none";
+  } else {
+    deepThinkStatus.style.display = "none";
+  }
+}
+
 button.addEventListener("click", async function () {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const urlPattern = /^https:\/\/(?:[^\/]+\.)?pearson\.com\//;
@@ -157,15 +227,16 @@ button.addEventListener("click", async function () {
     return; // Exit if the URL doesn't match
   }
   solveAllSelected = false;
+
+  // Set processing state to true
+  chrome.storage.local.set({ processingQuestion: true });
+
+  updateButtonsVisibility(true);
   const output = document.querySelector(".text");
   output.innerText = "";
 
   const load = document.querySelector(".spinner");
   load.style.display = "block";
-
-  button.style.display = "none";
-  solveAll.style.display = "none";
-  solveSelected.style.display = "none";
 
   const fullLink = document.querySelector(".fullResponse");
 
@@ -177,6 +248,7 @@ button.addEventListener("click", async function () {
   fullLink.style.display = "none";
   full.style.display = "none";
 });
+
 solveAll.addEventListener("click", async function () {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const urlPattern = /^https:\/\/(?:[^\/]+\.)?pearson\.com\//;
@@ -189,15 +261,16 @@ solveAll.addEventListener("click", async function () {
     return; // Exit if the URL doesn't match
   }
   solveAllSelected = true;
+  chrome.storage.local.set({
+    processingQuestion: true,
+    solveAllSelected: true,
+  });
+  updateButtonsVisibility(true);
   const output = document.querySelector(".text");
   output.innerText = "";
 
   const load = document.querySelector(".spinner");
   load.style.display = "block";
-
-  button.style.display = "none";
-  solveAll.style.display = "none";
-  solveSelected.style.display = "none";
 
   const fullLink = document.querySelector(".fullResponse");
 
@@ -209,6 +282,7 @@ solveAll.addEventListener("click", async function () {
   fullLink.style.display = "none";
   full.style.display = "none";
 });
+
 solveSelected.addEventListener("click", async function () {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const urlPattern = /^https:\/\/(?:[^\/]+\.)?pearson\.com\//;
@@ -221,15 +295,13 @@ solveSelected.addEventListener("click", async function () {
     return; // Exit if the URL doesn't match
   }
   solveAllSelected = false;
+  chrome.storage.local.set({ processingQuestion: true });
+  updateButtonsVisibility(true);
   const output = document.querySelector(".text");
   output.innerText = "";
 
   const load = document.querySelector(".spinner");
   load.style.display = "block";
-
-  button.style.display = "none";
-  solveAll.style.display = "none";
-  solveSelected.style.display = "none";
 
   const fullLink = document.querySelector(".fullResponse");
 
@@ -324,31 +396,138 @@ loginForm.addEventListener("submit", async (event) => {
 });
 
 // Deep Think button functionality
-/*
+
 document.getElementById("deepThink").addEventListener("click", function () {
   this.classList.toggle("selected");
-
-  // Store the selection state
   const isSelected = this.classList.contains("selected");
-  chrome.storage.local.set({ deepThinkEnabled: isSelected });
 
-  // Optional: Visual feedback
-  if (isSelected) {
-    this.innerText = "Deep Think 🧠";
-  } else {
-    this.innerText = "Deep Think";
-  }
+  // Store the selection state and update Solve All button state
+  chrome.storage.local.set({ deepThinkEnabled: isSelected }, () => {
+    const solveAllButton = document.getElementById("solveAll");
+    if (solveAllButton) {
+      solveAllButton.classList.toggle("disabled-button", isSelected);
+      solveAllButton.setAttribute(
+        "data-tooltip",
+        isSelected
+          ? "Disabled while Deep Think is enabled"
+          : "Solve all questions sequentially"
+      );
+    }
+  });
 });
 
 // Check stored state on popup open
 document.addEventListener("DOMContentLoaded", function () {
   const deepThinkButton = document.getElementById("deepThink");
+  const solveAllButton = document.getElementById("solveAll");
+  const output = document.querySelector(".text");
+  const spinner = document.querySelector(".spinner");
+  const fullLink = document.querySelector(".fullResponse");
+  const fullResponse = document.querySelector(".gptResponse");
 
-  chrome.storage.local.get(["deepThinkEnabled"], function (result) {
-    if (result.deepThinkEnabled) {
-      deepThinkButton.classList.add("selected");
-      deepThinkButton.innerText = "Deep Think 🧠";
+  // Check for processing state and last response
+  chrome.storage.local.get(
+    [
+      "processingQuestion",
+      "deepThinkEnabled",
+      "lastResponse",
+      "solveAllSelected",
+    ],
+    function (result) {
+      // Handle Deep Think button state
+      if (result.deepThinkEnabled) {
+        deepThinkButton.classList.add("selected");
+        if (solveAllButton) {
+          solveAllButton.classList.add("disabled-button");
+          solveAllButton.setAttribute(
+            "data-tooltip",
+            "Disabled while Deep Think is enabled"
+          );
+        }
+      }
+
+      // Restore solveAllSelected state from storage
+      solveAllSelected = result.solveAllSelected || false;
+
+      // If we have a stored response, display it
+      if (result.lastResponse) {
+        updatePopupUI(result.lastResponse);
+
+        // Only clear the response if it's a final answer and not in solve all mode
+        if (
+          result.lastResponse.includes("Final Answer:") &&
+          !result.solveAllSelected
+        ) {
+          chrome.storage.local.remove("lastResponse");
+          chrome.storage.local.set({ processingQuestion: false });
+        }
+      }
+      // If we're still processing with no response, show spinner
+      else if (result.processingQuestion) {
+        updateButtonsVisibility(true);
+        output.innerText = "";
+        spinner.style.display = "block";
+        fullLink.style.display = "none";
+        fullResponse.style.display = "none";
+
+        // Make sure the stop button is visible
+        const stopSolvingButton = document.getElementById("stopSolving");
+        stopSolvingButton.style.display = "block";
+      }
     }
-  });
+  );
+
+  // Add event listener for Stop Solving button
+  const stopSolvingButton = document.getElementById("stopSolving");
+  if (stopSolvingButton) {
+    stopSolvingButton.addEventListener("click", function () {
+      console.log("Stop solving button clicked");
+
+      // Reset the local flag immediately
+      solveAllSelected = false;
+
+      // First, get the current tab
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs && tabs[0] && tabs[0].id) {
+          // Send message to content script to stop solving
+          chrome.tabs.sendMessage(tabs[0].id, { action: "stopSolving" });
+        }
+      });
+
+      // Notify background script
+      chrome.runtime.sendMessage({
+        action: "solvingStopped",
+      });
+
+      // Reset UI state locally
+      chrome.storage.local.set({
+        processingQuestion: false,
+        solveAllSelected: false,
+      });
+
+      // Update UI immediately
+      const spinner = document.querySelector(".spinner");
+      if (spinner) spinner.style.display = "none";
+
+      const output = document.querySelector(".text");
+      if (output) output.innerText = "Solving stopped";
+
+      const fullLink = document.querySelector(".fullResponse");
+      if (fullLink) fullLink.style.display = "none";
+
+      // Directly set the button visibility rather than using updateButtonsVisibility
+      const solveButton = document.querySelector("button#solve");
+      const solveAllButton = document.querySelector("#solveAll");
+      const solveSelectedButton = document.querySelector("#solveSelected");
+      const deepThinkButton = document.querySelector("#deepThink");
+
+      if (solveButton) solveButton.style.display = "block";
+      if (solveAllButton) solveAllButton.style.display = "block";
+      if (solveSelectedButton) solveSelectedButton.style.display = "block";
+      if (deepThinkButton) deepThinkButton.style.display = "block";
+      if (stopSolvingButton) stopSolvingButton.style.display = "none";
+
+      console.log("Solving process stopped");
+    });
+  }
 });
-*/

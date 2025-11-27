@@ -9,6 +9,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       let questionText = "";
       let answerText = "";
 
+      // Add error handling for messaging
+      const handleError = () => {
+        // Notify the popup about the error
+
+        console.error("Failed to send error message:", e);
+      };
+
       // Wait for both elements
       (async () => {
         try {
@@ -16,6 +23,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           //below is not an await as it may never be found
           const removeElement = document.querySelector("span.tempAnswer");
           const removeButton = document.querySelector("button.stopSolving");
+          const existingSolvingIndicator =
+            document.querySelector(".solving-indicator");
           /*
         const firstInputFields = document.querySelectorAll("input.focusNode");
         const deleteInput = firstInputFields[firstInputFields.length - 1];
@@ -32,6 +41,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
           if (removeButton) {
             removeButton.remove();
+          }
+          if (existingSolvingIndicator) {
+            existingSolvingIndicator.remove();
           }
           var CLevent = new MouseEvent("click", {
             view: window,
@@ -62,13 +74,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         overlay.style.pointerEvents = "auto"; // Block all interactions except excluded ones
         document.body.appendChild(overlay);
         */
-          const stopSolving = document.createElement("button");
-          stopSolving.innerText = "Stop Solving";
-          stopSolving.style.backgroundColor = "red";
-          stopSolving.style.color = "white";
-          stopSolving.addEventListener("click", () => {
-            window.location.reload();
-          });
           if (questionElement) {
             console.log("Question element found:", questionElement);
             questionText = questionElement.innerText.trim();
@@ -78,7 +83,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             questionText = "";
           }
           if (answerElement) {
-            answerElement.insertBefore(stopSolving, answerElement.firstChild);
             console.log("Answer element found:", answerElement);
             answerText = answerElement.innerText.trim();
             console.log("This is the answer part text:", answerText);
@@ -86,6 +90,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.log("question text not found");
             answerText = "";
           }
+          // Add our styles and solving indicator BEFORE processing
+          addGlowStyles();
+
+          // Create the "Solving..." indicator BEFORE sending request
+          if (answerElement) {
+            const solvingIndicator = document.createElement("span");
+            solvingIndicator.textContent = "Solving...";
+            solvingIndicator.classList.add("solving-indicator");
+            answerElement.insertBefore(
+              solvingIndicator,
+              answerElement.firstChild
+            );
+          }
+
           // Send the question and answerPart to the background script
           chrome.runtime.sendMessage(
             {
@@ -94,8 +112,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               answerPart: answerText,
             },
             (response) => {
+              // Remove the solving indicator when we get a response
+              const indicator = document.querySelector(".solving-indicator");
+              if (indicator) {
+                indicator.remove();
+              }
+
+              if (chrome.runtime.lastError) {
+                console.error("Runtime error:", chrome.runtime.lastError);
+                handleError();
+                return;
+              }
+
               if (response && response.answer) {
                 console.log("This is the answer:", response.answer);
+
+                // Explicitly notify that processing is complete and include the answer
+                chrome.runtime.sendMessage({
+                  action: "updatePopup",
+                  data: response.answer,
+                  complete: true,
+                });
+
                 // contentScript.js
                 chrome.runtime.sendMessage({
                   action: "sendData",
@@ -115,9 +153,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     displayAnswer,
                     answerElement.firstChild
                   );
-                  if (stopSolving) {
-                    stopSolving.remove();
-                  }
                   return;
                 }
                 if (
@@ -137,9 +172,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     displayAnswer,
                     answerElement.firstChild
                   );
-                  if (stopSolving) {
-                    stopSolving.remove();
-                  }
                   return;
                 }
 
@@ -231,9 +263,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   displayAnswer,
                   answerElement.firstChild
                 );
-                if (stopSolving) {
-                  stopSolving.remove();
-                }
                 spanParts = document.querySelectorAll("span.step");
                 spanLastPart = spanParts[spanParts.length - 1];
                 console.log(spanParts);
@@ -375,40 +404,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     }
                   }
                 }
-
-                /*
-          // If you need to insert the answer into an input field:
-          waitForElement("input.answer-input").then((inputElement) => {
-            inputElement.value = response.answer;
-            console.log("Answer inserted into input field.");
-          });
-          */
               } else {
                 console.error(
                   "Failed to receive an answer from the background script."
                 );
-                chrome.runtime.sendMessage({
-                  action: "updatePopup",
-                  data: "Final answer: Server error. Please try again.",
-                });
+                handleError();
               }
             }
           );
         } catch (error) {
           console.error("Error while waiting for elements:", error);
+          handleError();
         }
       })();
     }
   }
+  // Return true to keep the message channel open for async responses
+  return true;
 });
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "solveAllContentScript") {
+    // Reset the stop flag at the beginning of a new solve all operation
+    window.solvingStopped = false;
+
     if (
       window.location.href.includes("tdx.acs.pearson.com/Player/Player.aspx")
     ) {
       // Place the logic you want to re-execute here
       let detected = true;
       function solve1(error) {
+        // Check if solving has been stopped
+        if (window.solvingStopped) {
+          console.log("Solving process was stopped");
+          // Reset the flag for future operations
+          window.solvingStopped = false;
+          // Reset the detected flag to stop the recursion
+          detected = false;
+          return;
+        }
+
         console.log("Content script running in:", window.location.href);
         let questionText = "";
         let answerText = "";
@@ -450,20 +485,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               const nextLi = selectedLi.nextElementSibling;
 
               if (nextLi) {
-                let link = nextLi.querySelector("div.acs-acs5");
+                // Old UI: div.acs-acs5; New UI: div.acs-acs6 plus anchor
+                const link =
+                  nextLi.querySelector("div.acs-acs5") ||
+                  nextLi.querySelector("div.acs-acs6");
+                const link2 = nextLi.querySelector("a.questionLabel");
+
                 if (link) {
                   console.log("Navigating to the next question...");
-                  link.click(); // Simulate a click on the next question's div
-                } else if (!link) {
-                  link = nextLi.querySelector("a.questionLabel");
                   link.click();
+                } else if (link2) {
+                  link2.click(); // fallback for old UI anchor-only case
                 } else {
                   console.warn("No link found in the next list item.");
                 }
 
                 // Allow time for the next question to load before continuing
                 setTimeout(() => {
-                  if (detected) {
+                  if (detected && !window.solvingStopped) {
                     solve1();
                   }
                 }, 500); // Adjust delay as needed for your application
@@ -522,17 +561,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               questionText = "";
             }
             const answerElement = document.querySelector("#bottom");
-            const stopSolving = document.createElement("button");
-            stopSolving.innerText = "Stop Solving";
-            stopSolving.style.backgroundColor = "red";
-            stopSolving.style.color = "white";
-            stopSolving.classList.add("stopSolving");
-            stopSolving.addEventListener("click", () => {
-              //reload the page
-              window.location.reload();
-            });
             if (answerElement) {
-              answerElement.insertBefore(stopSolving, answerElement.firstChild);
               console.log("Answer element found:", answerElement);
               answerText = answerElement.innerText.trim();
               console.log(
@@ -551,6 +580,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               return;
             }
 
+            // Add solving indicator BEFORE sending the request
+            addGlowStyles();
+            if (answerElement) {
+              // Create the "Solving..." indicator
+              const solvingIndicator = document.createElement("span");
+              solvingIndicator.textContent = "Solving...";
+              solvingIndicator.classList.add("solving-indicator");
+              answerElement.insertBefore(
+                solvingIndicator,
+                answerElement.firstChild
+              );
+            }
+
             // Send the question and answerPart to the background script
             chrome.runtime.sendMessage(
               {
@@ -559,6 +601,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 answerPart: answerText + additional,
               },
               (response) => {
+                // Remove the solving indicator when we get a response
+                const indicator = document.querySelector(".solving-indicator");
+                if (indicator) {
+                  indicator.remove();
+                }
+
                 if (response && response.answer) {
                   console.log("This is the answer:", response.answer);
                   if (response.answer === "User not logged in") {
@@ -576,9 +624,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         displayAnswer,
                         answerElement.firstChild
                       );
-                    }
-                    if (stopSolving) {
-                      stopSolving.remove();
                     }
                     return;
                   }
@@ -601,11 +646,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         answerElement.firstChild
                       );
                     }
-                    if (stopSolving) {
-                      stopSolving.remove();
-                    }
                     return;
                   }
+
+                  // Explicitly notify that processing is complete and include the answer
+                  chrome.runtime.sendMessage({
+                    action: "updatePopup",
+                    data: response.answer,
+                    complete: true,
+                  });
 
                   // contentScript.js
                   chrome.runtime.sendMessage({
@@ -705,9 +754,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                       displayAnswer,
                       answerElement.firstChild
                     );
-                  }
-                  if (stopSolving) {
-                    stopSolving.remove();
                   }
                   spanParts = document.querySelectorAll("span.step");
                   spanLastPart = spanParts[spanParts.length - 1];
@@ -920,14 +966,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                       return;
                     }
                   }
-
-                  /*
-          // If you need to insert the answer into an input field:
-          waitForElement("input.answer-input").then((inputElement) => {
-            inputElement.value = response.answer;
-            console.log("Answer inserted into input field.");
-          });
-          */
                 } else {
                   console.error(
                     "Failed to receive an answer from the background script."
@@ -935,9 +973,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
               }
             );
-            if (removeButton) {
-              removeButton.remove();
-            }
           } catch (error) {
             console.error("Error while waiting for elements:", error);
           }
@@ -959,124 +994,219 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     if (window.getSelection) {
       const removeElement = document.querySelector("span.tempAnswer");
       const removeButton = document.querySelector("button.stopSolving");
+      const existingSolvingIndicator =
+        document.querySelector(".solving-indicator");
+
       if (removeElement) {
         removeElement.remove();
       }
       if (removeButton) {
         removeButton.remove();
       }
+      if (existingSolvingIndicator) {
+        existingSolvingIndicator.remove();
+      }
+
+      // Add our styles
+      addGlowStyles();
 
       const answerElement = document.querySelector("#bottom");
-      const stopSolving = document.createElement("button");
-      stopSolving.innerText = "Stop Solving";
-      stopSolving.style.backgroundColor = "red";
-      stopSolving.style.color = "white";
-      stopSolving.classList.add("stopSolving");
-      stopSolving.addEventListener("click", () => {
-        //reload the page
-        window.location.reload();
-      });
       if (answerElement) {
-        answerElement.insertBefore(stopSolving, answerElement.firstChild);
-      } else {
-        const panel = document.querySelector(".controlPanel");
-        panel.insertBefore(stopSolving, panel.firstChild);
-      }
-      let text = window.getSelection().toString();
-      console.log(text);
-      chrome.runtime.sendMessage(
-        {
-          action: "processQuestion",
-          question: "",
-          answerPart: text,
-        },
-        (response) => {
-          if (response && response.answer) {
-            console.log("This is the answer:", response.answer);
-            if (response.answer === "User not logged in") {
-              alert(
-                "Please log in through the chrome extension or sign up to begin solving!"
-              );
+        // Create the "Solving..." indicator
+        const solvingIndicator = document.createElement("span");
+        solvingIndicator.textContent = "Solving...";
+        solvingIndicator.classList.add("solving-indicator");
+        answerElement.insertBefore(solvingIndicator, answerElement.firstChild);
+
+        let text = window.getSelection().toString();
+        console.log(text);
+
+        chrome.runtime.sendMessage(
+          {
+            action: "processQuestion",
+            question: "",
+            answerPart: text,
+          },
+          (response) => {
+            // Remove the solving indicator when we get a response
+            const indicator = document.querySelector(".solving-indicator");
+            if (indicator) {
+              indicator.remove();
+            }
+
+            if (response && response.answer) {
+              console.log("This is the answer:", response.answer);
+              if (response.answer === "User not logged in") {
+                alert(
+                  "Please log in through the chrome extension or sign up to begin solving!"
+                );
+                const displayAnswer = document.createElement("span");
+                displayAnswer.style.color = "#007dff";
+                displayAnswer.style.fontSize = "20px";
+                displayAnswer.innerText =
+                  "Please log in through the chrome extension or sign up to begin solving!";
+                displayAnswer.classList.add("tempAnswer");
+                if (answerElement) {
+                  answerElement.insertBefore(
+                    displayAnswer,
+                    answerElement.firstChild
+                  );
+                }
+                return;
+              }
+
+              if (
+                response.answer ===
+                "Final answer: You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!"
+              ) {
+                alert(
+                  "You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!"
+                );
+                const displayAnswer = document.createElement("span");
+                displayAnswer.style.color = "#007dff";
+                displayAnswer.style.fontSize = "20px";
+                displayAnswer.innerText =
+                  "You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!";
+                displayAnswer.classList.add("tempAnswer");
+                if (answerElement) {
+                  answerElement.insertBefore(
+                    displayAnswer,
+                    answerElement.firstChild
+                  );
+                }
+                return;
+              }
+
+              // Explicitly notify that processing is complete and include the answer
+              chrome.runtime.sendMessage({
+                action: "updatePopup",
+                data: response.answer,
+                complete: true,
+              });
+
+              // contentScript.js
+              chrome.runtime.sendMessage({
+                action: "sendData",
+                data: response.answer,
+              });
+
               const displayAnswer = document.createElement("span");
               displayAnswer.style.color = "#007dff";
               displayAnswer.style.fontSize = "20px";
-              displayAnswer.innerText =
-                "Please log in through the chrome extension or sign up to begin solving!";
+              const keyword = "Final Answer: ";
+              const answer = response.answer.substring(
+                response.answer.indexOf(keyword) + keyword.length
+              );
+              const parts = answer.split("<esc>");
+              displayAnswer.innerText = "Answer: " + parts.join("");
+              console.log(parts);
               displayAnswer.classList.add("tempAnswer");
               if (answerElement) {
                 answerElement.insertBefore(
                   displayAnswer,
                   answerElement.firstChild
                 );
-              } else {
-                const panel = document.querySelector(".controlPanel");
-                panel.insertBefore(displayAnswer, panel.firstChild);
               }
-
-              if (stopSolving) {
-                stopSolving.remove();
-              }
-              return;
+              spanParts = document.querySelectorAll("span.step");
+              spanLastPart = spanParts[spanParts.length - 1];
+              console.log(spanParts);
+              console.log(spanLastPart);
             }
-
-            if (
-              response.answer ===
-              "Final answer: You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!"
-            ) {
-              alert(
-                "You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!"
-              );
-              const displayAnswer = document.createElement("span");
-              displayAnswer.style.color = "#007dff";
-              displayAnswer.style.fontSize = "20px";
-              displayAnswer.innerText =
-                "You have reached your free limit of 10 uses, please subscribe at mylabsolver.com to have unlimited uses!";
-              displayAnswer.classList.add("tempAnswer");
-              if (answerElement) {
-                answerElement.insertBefore(
-                  displayAnswer,
-                  answerElement.firstChild
-                );
-              }
-              if (stopSolving) {
-                stopSolving.remove();
-              }
-              return;
-            }
-
-            // contentScript.js
-            chrome.runtime.sendMessage({
-              action: "sendData",
-              data: response.answer,
-            });
-
-            const displayAnswer = document.createElement("span");
-            displayAnswer.style.color = "#007dff";
-            displayAnswer.style.fontSize = "20px";
-            const keyword = "Final Answer: ";
-            const answer = response.answer.substring(
-              response.answer.indexOf(keyword) + keyword.length
-            );
-            const parts = answer.split("<esc>");
-            displayAnswer.innerText = "Answer: " + parts.join("");
-            console.log(parts);
-            displayAnswer.classList.add("tempAnswer");
-            if (answerElement) {
-              answerElement.insertBefore(
-                displayAnswer,
-                answerElement.firstChild
-              );
-            }
-            if (stopSolving) {
-              stopSolving.remove();
-            }
-            spanParts = document.querySelectorAll("span.step");
-            spanLastPart = spanParts[spanParts.length - 1];
-            console.log(spanParts);
-            console.log(spanLastPart);
           }
-        }
-      );
+        );
+      }
     }
   }
 });
+
+// Also add a listener for page unload/refresh
+window.addEventListener("beforeunload", function () {
+  // Let the background script know the page is being unloaded
+  chrome.runtime.sendMessage({
+    action: "pageUnloaded",
+  });
+});
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "stopSolving") {
+    console.log("Stopping solving process from popup button");
+
+    // Remove any temporary answer display
+    const tempAnswer = document.querySelector("span.tempAnswer");
+    if (tempAnswer) {
+      tempAnswer.remove();
+    }
+
+    // Remove solving indicator
+    const solvingIndicator = document.querySelector(".solving-indicator");
+    if (solvingIndicator) {
+      solvingIndicator.remove();
+    }
+
+    // Set a flag to prevent continuation of any solve operations
+    window.solvingStopped = true;
+
+    // Also reset the detected flag to stop the recursion in solveAll
+    detected = false;
+
+    // If there are any ongoing operations or timers, cancel them
+    if (window.solveTimeout) {
+      clearTimeout(window.solveTimeout);
+    }
+
+    // Abort any fetch requests
+    if (
+      window.activeRequest &&
+      typeof window.activeRequest.abort === "function"
+    ) {
+      window.activeRequest.abort();
+    }
+
+    // Reset the processing state
+    chrome.storage.local.set({
+      processingQuestion: false,
+      solveAllSelected: false,
+    });
+
+    // Let the sender know the action was handled
+    if (sendResponse) {
+      sendResponse({ result: "Solving process stopped" });
+    }
+  }
+});
+
+// First, let's add a style element for our glow animation
+function addGlowStyles() {
+  // Check if we've already added the styles
+  if (document.getElementById("solving-glow-styles")) return;
+
+  const styleElement = document.createElement("style");
+  styleElement.id = "solving-glow-styles";
+  styleElement.textContent = `
+    @keyframes glowScan {
+      0% {
+        background-position: -200px 0;
+      }
+      100% {
+        background-position: 200px 0;
+      }
+    }
+    .solving-indicator {
+      display: inline-block;
+      font-size: 20px;
+      font-weight: bold;
+      color: #007dff;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, 
+                  rgba(0, 125, 255, 0) 0%, 
+                  rgba(0, 125, 255, 0.8) 50%, 
+                  rgba(0, 125, 255, 0) 100%);
+      background-size: 200px 100%;
+      background-repeat: no-repeat;
+      animation: glowScan 1.5s infinite linear;
+      border-radius: 4px;
+    }
+  `;
+  document.head.appendChild(styleElement);
+}

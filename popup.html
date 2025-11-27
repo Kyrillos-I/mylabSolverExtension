@@ -18,13 +18,23 @@
     <button id="solveSelected" data-tooltip="Solve the mouse highlighted text">
       Solve Highlight
     </button>
-    <!--<button
+    <button
       id="deepThink"
       class="deep-think"
       data-tooltip="Use a smarter, but slower AI model"
     >
-      Deep Think
-    </button>-->
+      <span class="text-deep">Deep Think</span><span class="emoji">🧠</span>
+    </button>
+    <button
+      id="stopSolving"
+      class="stop-solving"
+      data-tooltip="Stop the current solving operation"
+    >
+      Stop Solving
+    </button>
+    <div class="deep-think-status">
+      Deep Think Enabled - The Answer Will Be More Accurate But Slower
+    </div>
     <h3 class="label">Answer:</h3>
     <div class="output">
       <img src="spinner.png" alt="loading spinner" class="spinner" />

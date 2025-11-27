@@ -40,6 +40,7 @@ button#solveAll {
   margin-top: none;
   min-height: 70px;
   min-width: 140px;
+  max-width: 95%;
   border: black solid 1px;
   border-radius: 2px;
   text-align: center;
@@ -47,6 +48,15 @@ button#solveAll {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 5px;
+  overflow: hidden;
+  height: auto;
+}
+span.text {
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 .label {
   margin-bottom: 0;
@@ -77,6 +87,9 @@ button#solveAll {
   min-width: 140px;
   border: #007dff solid 1px;
   border-radius: 2px;
+  max-width: 95%;
+  padding: 5px;
+  height: auto;
 }
 @keyframes spin {
   from {
@@ -152,7 +165,7 @@ button#solveSelected:active:hover {
 
 button#deepThink {
   height: 30px;
-  width: 130px;
+  width: 145px;
   border-radius: 15px; /* Fully rounded sides (half of height) */
   border: 2px solid #007dff;
   background-color: transparent; /* Clear when unselected */
@@ -161,6 +174,11 @@ button#deepThink {
   margin-bottom: 20px;
   transition: transform 0.1s ease-in, background-color 0.2s ease-in,
     color 0.2s ease-in, border 0.2s ease-in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative; /* For absolute positioning of content */
+  padding: 0 15px; /* Add some padding for the content */
 }
 
 button#deepThink:hover {
@@ -175,6 +193,32 @@ button#deepThink.selected {
 
 button#deepThink:active:hover {
   background-color: #e6f2ff;
+}
+
+button#deepThink span.emoji {
+  opacity: 0;
+  display: inline-block;
+  margin-left: -20px;
+  transition: opacity 0.2s ease-in, margin-left 0.2s ease-in;
+  position: absolute; /* Position relative to button */
+  right: 15px; /* Adjust this value to position the emoji */
+}
+
+button#deepThink span.text-deep {
+  display: inline-block;
+  transition: transform 0.2s ease-in;
+  position: relative; /* Allow z-index to work */
+}
+
+button#deepThink.selected span.emoji {
+  opacity: 1;
+  margin-left: 0;
+}
+
+button#deepThink.selected span.text-deep {
+  transform: translateX(
+    -10px
+  ); /* Adjust this value to center the final result */
 }
 
 /* Basic tooltip styling */
@@ -226,3 +270,54 @@ button.log-out[data-tooltip]::before {
   bottom: 35px;
 }
 */
+
+.disabled-button {
+  background-color: #808080 !important; /* Grey color */
+  cursor: not-allowed;
+  border: none !important; /* Prevent any border styles */
+  color: white !important; /* Ensure text is visible */
+}
+
+/* Remove any hover effects for disabled button */
+.disabled-button:hover {
+  transform: none !important;
+}
+
+.disabled-button:active:hover {
+  background-color: #808080 !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Prevent clicks on the disabled button */
+.disabled-button:active,
+.disabled-button:hover:active {
+  pointer-events: none;
+}
+
+.deep-think-status {
+  color: #007dff;
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 20px;
+  display: none;
+}
+
+button#stopSolving {
+  background-color: #e74c3c;
+  height: 30px;
+  width: 110px;
+  font-size: 16px;
+  display: none; /* Hidden by default */
+  margin-bottom: 10px;
+}
+
+button#stopSolving:hover {
+  transform: scale(1.2, 1.2);
+}
+
+button#stopSolving:active:hover {
+  background-color: white;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
